@@ -20,3 +20,5 @@ Simple Rust-based IP filter of incoming connections
   Период опроса внешного API (если не указан - значение 15 минут)
 - exluded_ip
   Исключённый из фильтрации список IP подсетей в CIDR нотации
+- proxy_protocol
+  Флаг указывающий, содержат ли первые байты TCP потока PROXY Header параметр (False по умолчанию)
