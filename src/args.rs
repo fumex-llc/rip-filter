@@ -25,4 +25,7 @@ pub(crate) struct Args {
     /// Path to file with list of excluded IP range (CIDR notation)
     #[arg(short, long)]
     pub exluded_ip: Option<String>,
+    /// Boolean flag indicates does the icoming connections use proxy_protocol v1/v2 (False by default)
+    #[arg(short, long, default_value = "false")]
+    pub proxy_protocol: bool,
 }

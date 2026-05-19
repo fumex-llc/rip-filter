@@ -3,6 +3,8 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
 
+pub(crate) const PROXY_PROTOCOL_HEADER_LEN: usize = 108;
+
 pub(crate) type IpSet = Arc<DashSet<IpAddr>>;
 pub(crate) type IpMap = Arc<DashMap<IpAddr, IpKind>>;
 pub(crate) type IpRangeSet = Arc<Vec<IpNet>>;

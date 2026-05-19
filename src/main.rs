@@ -1,8 +1,8 @@
 use crate::{
     args::Args,
-    ip::{IpKind, IpMap, IpRangeSet, IpSet, ProxyCheckResponse},
+    ip::{IpKind, IpMap, IpRangeSet, IpSet, PROXY_PROTOCOL_HEADER_LEN, ProxyCheckResponse},
 };
-use anyhow::Result;
+use anyhow::{Error, Result};
 use clap::Parser;
 use ipnet::IpNet;
 use std::{
@@ -19,6 +19,30 @@ use tokio::{
 mod args;
 mod ip;
 
+async fn read_proxy_ip(stream: &TcpStream) -> Result<IpAddr> {
+    let mut buf = [0u8; PROXY_PROTOCOL_HEADER_LEN];
+    let nb = stream.peek(&mut buf).await?;
+
+    let raw_str = std::str::from_utf8(&buf[..nb])?;
+    if !raw_str.contains("\r\n") {
+        return Err(Error::msg("Incompleted PROXY header"));
+    }
+
+    let lines = raw_str
+        .split("\r\n")
+        .next()
+        .ok_or(Error::msg("Failed to parse PROXY Protocol"))?;
+
+    let frames = lines.split_ascii_whitespace().collect::<Vec<_>>();
+    let addr = frames
+        .get(2)
+        .ok_or(Error::msg(
+            "Failed to parse extract IP Address from PROXY Header",
+        ))?
+        .parse()?;
+    Ok(addr)
+}
+
 async fn dial(dest: SocketAddrV4, stream: &mut TcpStream) {
     match TcpStream::connect(&dest).await {
         Ok(mut dial) => {
@@ -33,12 +57,18 @@ async fn dial(dest: SocketAddrV4, stream: &mut TcpStream) {
 
 async fn handle_connection(
     mut stream: TcpStream,
+    with_proxy_protocol: bool,
     ip: IpAddr,
     dest: SocketAddrV4,
     ip_set: IpMap,
     incoming_connections: IpSet,
     excluded_range: IpRangeSet,
 ) {
+    let ip = if with_proxy_protocol { read_proxy_ip(&stream).await } else {Ok(ip)};
+    let Ok(ip) = ip else {
+        dial(dest, &mut stream).await;
+        return;
+    };
     for range in excluded_range.iter() {
         if range.contains(&ip) {
             dial(dest, &mut stream).await;
@@ -141,6 +171,7 @@ async fn main() -> Result<()> {
                 tokio::spawn(async move {
                     let _ = handle_connection(
                         stream,
+                        args.proxy_protocol,
                         address.ip(),
                         dest,
                         ip_set,
