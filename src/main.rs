@@ -122,7 +122,6 @@ async fn main() -> Result<()> {
                         "https://proxycheck.io/v2/{}?key=${}&vpn=1&asn=1",
                         ip, &args.api_key
                     ))
-                    .bearer_auth(&args.api_key)
                     .send()
                     .await?
                     .json()
