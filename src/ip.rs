@@ -35,7 +35,6 @@ pub(crate) struct ProxyCheckResponse {
 
 impl ProxyCheckResponse {
     pub fn ip_kind(self) -> IpKind {
-        println!("RESP {self:?}");
         self.ips.into_iter().next().unwrap_or_default().1.r#type
     }
 }
