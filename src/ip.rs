@@ -24,7 +24,7 @@ pub(crate) enum IpKind {
 impl IpKind {
     pub fn is_allowed(&self) -> bool {
         use IpKind::*;
-        matches!(self, Residential | Business | Hosting)
+        !matches!(self, Residential | Business | Hosting)
     }
 }
 
