@@ -5,6 +5,7 @@ use crate::{
 use anyhow::{Error, Result};
 use clap::Parser;
 use ipnet::IpNet;
+use proxy_protocol_rs::parse;
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, SocketAddrV4},
@@ -23,24 +24,9 @@ async fn read_proxy_ip(stream: &TcpStream) -> Result<IpAddr> {
     let mut buf = [0u8; PROXY_PROTOCOL_HEADER_LEN];
     let nb = stream.peek(&mut buf).await?;
 
-    let raw_str = std::str::from_utf8(&buf[..nb])?;
-    if !raw_str.contains("\r\n") {
-        return Err(Error::msg("Incompleted PROXY header"));
-    }
-
-    let lines = raw_str
-        .split("\r\n")
-        .next()
-        .ok_or(Error::msg("Failed to parse PROXY Protocol"))?;
-
-    let frames = lines.split_ascii_whitespace().collect::<Vec<_>>();
-    let addr = frames
-        .get(2)
-        .ok_or(Error::msg(
-            "Failed to parse extract IP Address from PROXY Header",
-        ))?
-        .parse()?;
-    Ok(addr)
+    let (info, _) = parse(&buf[..nb])?;
+    let sock_addr = info.source_inet().ok_or(Error::msg("Couldn't parse PROXY header. Unexpected error"))?;
+    Ok(sock_addr.ip())
 }
 
 async fn dial(dest: SocketAddrV4, stream: &mut TcpStream) {
